@@ -1,0 +1,32 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "host",
+      "displayName": "PC (depuración)",
+      "binaryDir": "build/host",
+      "cacheVariables": { "PORT": "host", "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "host-asan",
+      "displayName": "PC con AddressSanitizer + UBSan",
+      "binaryDir": "build/host-asan",
+      "cacheVariables": { "PORT": "host", "CMAKE_BUILD_TYPE": "Debug", "FW_SANITIZE": "ON" }
+    },
+    {
+      "name": "stm32f411",
+      "displayName": "STM32F411 (Blackpill), optimizado",
+      "binaryDir": "build/stm32f411",
+      "toolchainFile": "cmake/toolchain-arm-none-eabi.cmake",
+      "cacheVariables": { "PORT": "stm32f411", "CMAKE_BUILD_TYPE": "MinSizeRel" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "host", "configurePreset": "host" },
+    { "name": "host-asan", "configurePreset": "host-asan" },
+    { "name": "stm32f411", "configurePreset": "stm32f411" }
+  ],
+  "testPresets": [
+    { "name": "host-asan", "configurePreset": "host-asan", "output": { "outputOnFailure": true } }
+  ]
+}

@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: clang-format
+        run: clang-format --dry-run -Werror $(git ls-files '*.c' '*.h')
+
+  automation-algorithms:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: automation-algorithms
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DAA_SANITIZE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      - run: cmake --build build -j
+      - run: ctest --test-dir build --output-on-failure
+      - name: clang-tidy
+        run: clang-tidy -p build src/*.c
+      - name: Ejemplos
+        run: ./build/hsm_traffic_light && ./build/pid_windup | tail -1
+      - name: Compila para Cortex-M4
+        run: |
+          sudo apt-get install -y gcc-arm-none-eabi
+          for f in src/*.c; do arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Os \
+            -std=c99 -Wall -Wextra -Wpedantic -Wconversion -Wdouble-promotion -Werror -Iinclude -c $f -o /dev/null; done
+
+  firmware-host:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: firmware-starter
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake --preset host-asan && cmake --build --preset host-asan
+      - run: ctest --preset host-asan
+      - name: clang-tidy
+        run: clang-tidy -p build/host-asan src/*/*.c src/main.c
+      - name: Prueba de humo del firmware en el PC
+        run: |
+          cmake --preset host && cmake --build --preset host
+          (sleep 1.5; printf 'status\rversion\r'; sleep 0.5) | timeout 4 ./build/host/firmware | tee salida.txt || true
+          grep -q "estado=NORMAL" salida.txt && grep -q "firmware-starter 1.0.0" salida.txt
+
+  firmware-stm32:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: firmware-starter
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - run: cmake --preset stm32f411 && cmake --build --preset stm32f411
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-stm32f411
+          path: |
+            firmware-starter/build/stm32f411/firmware.elf
+            firmware-starter/build/stm32f411/firmware.bin
+            firmware-starter/build/stm32f411/firmware.hex
