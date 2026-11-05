@@ -21,7 +21,7 @@ void cli_printf(const char *fmt, ...)
     char buf[128];
     va_list ap;
     va_start(ap, fmt);
-    int n = vsnprintf(buf, sizeof buf, fmt, ap);
+    int n = vsnprintf(buf, sizeof buf, fmt, ap); // NOLINT(clang-analyzer-valist.Uninitialized): falso positivo del analizador con va_start/va_end correctos
     va_end(ap);
     if (n > 0) hal_uart_write((const uint8_t *)buf, (size_t)n < sizeof buf ? (size_t)n : sizeof buf - 1u);
 }
